@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 const answerSchema = new mongoose.Schema(
   {
     questionId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    // 该题目在题库中的来源版本，用于跨问卷单题统计
+    sourceQuestionId: { type: mongoose.Schema.Types.ObjectId, ref: 'LibraryQuestion' },
     type: { type: String, enum: ['radio', 'checkbox', 'text', 'number'], required: true },
     value: { type: mongoose.Schema.Types.Mixed },
     selectedOptionIds: [{ type: String }],

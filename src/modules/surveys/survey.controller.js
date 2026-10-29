@@ -38,7 +38,14 @@ export const addQuestion = asyncHandler(async (req, res) => {
 });
 
 export const updateQuestion = asyncHandler(async (req, res) => {
-  const s = await SurveyService.updateQuestion(req.params.id, req.user._id, req.params.qid, req.body);
+  const { createNewVersion, ...updates } = req.body || {};
+  const s = await SurveyService.updateQuestion(
+    req.params.id,
+    req.user._id,
+    req.params.qid,
+    updates,
+    { createNewVersion }
+  );
   return success(res, s, 'Question updated');
 });
 

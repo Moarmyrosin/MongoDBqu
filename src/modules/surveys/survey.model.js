@@ -55,6 +55,9 @@ const questionSchema = new mongoose.Schema(
     options: [optionSchema],
     validationRule: { type: mongoose.Schema.Types.Mixed, default: {} },
     jumpRules: [jumpRuleSchema],
+    // 来源题库题目版本（从题目库选用的题目会记录来源，用于版本历史 / 使用统计 / 跨问卷统计）
+    sourceQuestionId: { type: mongoose.Schema.Types.ObjectId, ref: 'LibraryQuestion' },
+    sourceVersion: { type: Number },
     meta: { type: mongoose.Schema.Types.Mixed, default: {} }
   },
   { _id: true }

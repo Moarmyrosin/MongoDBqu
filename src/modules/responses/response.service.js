@@ -81,7 +81,12 @@ export const submitResponse = async ({
     const v = validateAnswerForQuestion(q, rawA);
     if (!v.valid) errors.push({ questionId: currentId, errors: v.errors });
     const sA = serializeAnswerForQuestion(q, rawA);
-    validatedAnswers.push({ questionId: q._id, type: q.type, ...sA });
+    validatedAnswers.push({
+      questionId: q._id,
+      sourceQuestionId: q.sourceQuestionId || undefined,
+      type: q.type,
+      ...sA
+    });
     currentId = getNextQuestionId(q, rawA);
   }
 
@@ -93,7 +98,12 @@ export const submitResponse = async ({
       const v = validateAnswerForQuestion(q, rawA);
       if (!v.valid) errors.push({ questionId: id, errors: v.errors });
       const sA = serializeAnswerForQuestion(q, rawA);
-      validatedAnswers.push({ questionId: q._id, type: q.type, ...sA });
+      validatedAnswers.push({
+        questionId: q._id,
+        sourceQuestionId: q.sourceQuestionId || undefined,
+        type: q.type,
+        ...sA
+      });
     }
   }
 

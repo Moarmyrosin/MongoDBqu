@@ -2,6 +2,7 @@ import { Survey } from './survey.model.js';
 import { createSurvey, getSurveyById, listSurveysByOwner, deleteSurveyById } from './survey.repo.js';
 import { badRequest, notFound, forbidden } from '../../common/errors/index.js';
 import { isPast } from '../../common/utils/time.js';
+import * as LibraryService from '../questions/library.service.js';
 
 const ensureOwner = (survey, userId) => {
   if (survey.createdBy.toString() !== userId.toString())
@@ -66,20 +67,40 @@ export const updateBasic = async (id, userId, { title, description, settings, de
   return s;
 };
 
+/**
+ * 添加题目。
+ * - body 带 fromQuestionId：从题目库选用的题目，复制该版本内容为快照并记录 sourceQuestionId/sourceVersion；
+ *   任何人对该题（拥有者或被共享者）都需有读取权限。之后题库修改不影响此处快照。
+ * - 否则按传统方式新建嵌入题目。
+ */
 export const addQuestion = async (id, userId, q) => {
   const s = await getSurveyById(id);
   if (!s) throw notFound('Survey not found');
   ensureOwner(s, userId);
   ensureDraft(s);
-  const order = q.order !== undefined ? q.order : s.questions.length;
-  s.questions.push({ ...q, order });
+
+  if (q?.fromQuestionId) {
+    const src = await LibraryService.assertAccessible(q.fromQuestionId, userId);
+    const content = src.content?.toObject ? src.content.toObject() : src.content;
+    const order = s.questions.length;
+    s.questions.push({ ...content, order, sourceQuestionId: src._id, sourceVersion: src.version });
+  } else {
+    const order = q.order !== undefined ? q.order : s.questions.length;
+    s.questions.push({ ...q, order });
+  }
   reindexQuestions(s);
   syncFirstQuestion(s);
   await s.save();
   return s;
 };
 
-export const updateQuestion = async (id, userId, questionId, updates) => {
+/**
+ * 修改题目（仅草稿）。
+ * - createNewVersion=true 且题目来自题库：将本次修改保存为题库新版本，
+ *   并把本问卷的题目指向新版本（旧问卷继续使用旧版本快照）。
+ * - 否则仅修改本问卷内的快照（不会影响题库或其他问卷）。
+ */
+export const updateQuestion = async (id, userId, questionId, updates = {}, { createNewVersion } = {}) => {
   const s = await getSurveyById(id);
   if (!s) throw notFound('Survey not found');
   ensureOwner(s, userId);
@@ -87,6 +108,26 @@ export const updateQuestion = async (id, userId, questionId, updates) => {
   const q = s.questions.id(questionId);
   if (!q) throw notFound('Question not found');
   Object.assign(q, updates);
+
+  if (createNewVersion === true && q.sourceQuestionId) {
+    const src = await LibraryService.assertAccessible(q.sourceQuestionId, userId);
+    const content = {
+      title: q.title,
+      description: q.description,
+      type: q.type,
+      required: q.required,
+      options: q.options,
+      validationRule: q.validationRule,
+      jumpRules: q.jumpRules
+    };
+    const newVersion =
+      LibraryService.createNewVersionFrom
+        ? await LibraryService.createNewVersionFrom(src, content, userId)
+        : await LibraryService.updateQuestion(src._id, userId, { content, forceNewVersion: true });
+    q.sourceQuestionId = newVersion._id;
+    q.sourceVersion = newVersion.version;
+  }
+
   reindexQuestions(s);
   syncFirstQuestion(s);
   await s.save();
