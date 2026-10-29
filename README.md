@@ -1,6 +1,6 @@
 # Survey System
 
-基于 MongoDB 的模块化问卷系统后端。
+基于 MongoDB 的模块化问卷系统，支持**题目库（题目保存/复用/分享/版本化）**与**题库（题目分组管理）**，以及**单题跨问卷统计**。
 
 ## 快速开始
 
@@ -20,8 +20,11 @@ npm run dev
 # 5. 可选：写入示例数据（demo / password123）
 npm run seed
 
-# 6. 可选：校验前端接口声明与后端路由是否同步
+# 6. 校验前端接口声明与后端路由是否同步
 npm run api:check
+
+# 7. 端到端回归测试（自包含，自动拉起应用，验证 8 项需求变更）
+npm test
 ```
 
 ## 前端
@@ -35,6 +38,8 @@ npm run api:check
 | `#/surveys/:id/edit` | 问卷编辑器（基本信息、填写设置、题目、选项、校验规则、跳转规则、截止时间） |
 | `#/surveys/:id/results` | 统计结果（条形图 / 数字统计 / 文字列表）与答卷明细 |
 | `#/f/:id` | 公开填写页（支持逐步向导模式、跳转、逐题校验、错误定位） |
+| `#/library` | 题目库（我的题目 / 共享给我的 / 题库，创建、编辑、分享、版本历史、恢复） |
+| `#/question/:id/analytics` | 单题跨问卷统计 |
 | `#/sync` | 接口同步自检 |
 
 ### 后端改了接口后如何同步
@@ -72,6 +77,21 @@ npm run api:check
 | GET | /api/surveys/:id/responses | 答卷列表（仅拥有者） |
 | GET | /api/surveys/:id/analytics | 全卷统计（仅拥有者） |
 | GET | /api/surveys/:id/questions/:qid/analytics | 单题统计（仅拥有者） |
+| GET | /api/library | 我的题目 / 共享给我的 / 题库列表 |
+| POST | /api/library | 新建题目（可指定 bankId 归入题库） |
+| GET | /api/library/:id | 题目详情 |
+| PATCH | /api/library/:id | 修改题目（默认产生新版本） |
+| DELETE | /api/library/:id | 删除题目（软删除，保留历史版本） |
+| GET | /api/library/:id/versions | 版本历史 |
+| POST | /api/library/:id/restore | 恢复某个历史版本 |
+| POST | /api/library/:id/share | 设置共享用户 |
+| GET | /api/library/:id/shared-users | 查看共享用户 |
+| GET | /api/library/:id/usage | 使用记录（哪些问卷、哪些版本用到） |
+| GET | /api/library/:id/analytics | 单题跨问卷统计（含各问卷明细） |
+| POST | /api/banks | 新建题库 |
+| GET | /api/banks | 我的题库 |
+| PATCH | /api/banks/:id | 重命名题库 |
+| DELETE | /api/banks/:id | 删除题库（题目移出题库） |
 
 ## 模块结构
 
@@ -82,17 +102,35 @@ src/
   modules/
     auth/         # 注册登录
     users/        # 用户模型
-    surveys/      # 问卷 CRUD、发布、截止
-    questions/    # 题型注册表（单选/多选/文本/数字）
-    responses/    # 答卷提交与校验
+    surveys/      # 问卷 CRUD、发布、截止、题目快照
+    questions/    # 题目库 + 题库 + 版本链 + 使用统计 + 跨问卷统计
+    responses/    # 答卷提交与校验（记录 sourceQuestionId）
     analytics/    # 统计结果
     rules/        # 跳转规则引擎
     validation/   # 通用校验
   routes/         # 路由汇总
   app.js
   server.js
-scripts/seed.js   # 示例数据
+scripts/
+  seed.js                    # 示例数据
+  api-check.js               # 接口同步自检
+  e2e-requirements-test.mjs  # 8 项需求变更端到端回归测试（npm test）
 ```
+
+## 需求变更（题目复用 / 分享 / 版本化 / 题库 / 跨问卷统计）
+
+| 编号 | 需求 | 实现方式 |
+|------|------|----------|
+| R1 | 保存题目以便复用 | `POST /api/library` 保存为 `LibraryQuestion`，问卷编辑器可选“从题目库选用” |
+| R2 | 分享题目 | `POST /api/library/:id/share` 写入 `sharedWith`，被共享者只读复用 |
+| R3 | 修改不影响已发布问卷 | 选用题目时**复制内容快照**进问卷子文档；题库修改不触碰快照 |
+| R4 | 修改历史 + 恢复 | `rootQuestionId` 版本链 + `GET .../versions` + `POST .../restore` |
+| R5 | 多版本共存 | 每次编辑默认 `createNewVersion`，`previousVersionId` 串联，`{rootQuestionId, version}` 唯一索引 |
+| R6 | 使用记录 | `GET /api/library/:id/usage` 返回用到该题的问卷、版本、是否本人问卷 |
+| R7 | 题库 | `QuestionBank` 模型 + `bankId` 关联 + 题库 CRUD |
+| R8 | 跨问卷统计 | 答卷按 `sourceQuestionId` 记录，`GET /api/library/:id/analytics` 聚合所有问卷 |
+
+> 详细的设计思路、修改原因与改动方案见 [`docs/需求变更-设计思路与修改方案.md`](docs/需求变更-设计思路与修改方案.md)。
 
 ## 扩展点
 
@@ -100,3 +138,4 @@ scripts/seed.js   # 示例数据
 - **调整校验规则**：题目的 `validationRule` 为自由 Mixed 字段，新规则只需在对应题型实现中读取。
 - **调整跳转逻辑**：`jumpRules` 存于题目内，条件/动作结构可扩展；解析在 `src/modules/rules/`。
 - **新增开关**：在 `survey.settings` 中增加字段，填表/提交时按需读取。
+- **题目版本策略**：在 `library.service.js` 的 `updateQuestion` 中通过 `forceNewVersion` / `createNewVersionFrom` 控制“原地改”与“分支新版本”两种策略。

@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node scripts/seed.js",
-    "api:check": "node scripts/api-check.js"
+    "api:check": "node scripts/api-check.js",
+    "test": "node scripts/e2e-requirements-test.mjs"
   },
   "engines": {
     "node": ">=18.0.0"
