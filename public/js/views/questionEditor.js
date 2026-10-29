@@ -118,7 +118,28 @@ const conditionValueInput = (cond, question) => {
   return el('input', {
     class: 'input input-sm', type: kind === 'number' ? 'number' : 'text',
     value: cond.value ?? '', placeholder: kind === 'number' ? '数值' : '值',
-    oninput: (e) => { cond.value = e.target.value; }
+    oninput: (e) => { cond.value = e.target.value;     }
+  });
+};
+
+/** 题目库专用：新建/编辑题库题目（无跳转规则，保存为 content 结构） */
+export const openLibraryQuestionEditor = ({ question, onSave }) => {
+  const content = question?.content
+    ? { ...question.content, _id: question._id }
+    : null;
+  openQuestionEditor({
+    survey: null,
+    question: content,
+    onSave: (draft) => onSave({
+      content: {
+        title: draft.title,
+        description: draft.description,
+        type: draft.type,
+        required: draft.required,
+        options: draft.options,
+        validationRule: draft.validationRule
+      }
+    })
   });
 };
 
@@ -327,11 +348,16 @@ const validationEditor = (draft, refresh) => {
 
 /**
  * 打开题目编辑弹窗。
- * @param {{survey:any, question:any|null, onSave:Function}} opts
+ * @param {{survey:any|null, question:any|null, onSave:Function}} opts
+ *   - survey 存在：问卷题目编辑（可配置跳转规则、目标为问卷内其他题目）
+ *   - survey 为 null：题目库编辑器（不涉及跳转规则）
  */
-export const openQuestionEditor = ({ survey, question, onSave }) => {
+export const openQuestionEditor = ({ survey = null, question, onSave }) => {
   const isNew = !question;
-  const otherQuestions = (survey.questions || []).filter((q) => !question || String(q._id) !== String(question._id));
+  const isSurveyMode = Boolean(survey);
+  const otherQuestions = ((survey ? survey.questions : []) || []).filter(
+    (q) => !question || String(q._id) !== String(question._id)
+  );
 
   const draft = {
     title: question?.title || '',
@@ -340,10 +366,12 @@ export const openQuestionEditor = ({ survey, question, onSave }) => {
     required: Boolean(question?.required),
     options: (question?.options || []).map((o) => ({ label: o.label, value: o.value, _touched: true })),
     validationRule: { ...(question?.validationRule || {}) },
-    jumpRules: (question?.jumpRules || []).map((r) => ({
-      when: { conditions: (r.when?.conditions || []).map((c) => ({ ...c })) },
-      gotoQuestionId: r.gotoQuestionId ? String(r.gotoQuestionId) : ''
-    }))
+    jumpRules: isSurveyMode
+      ? (question?.jumpRules || []).map((r) => ({
+        when: { conditions: (r.when?.conditions || []).map((c) => ({ ...c })) },
+        gotoQuestionId: r.gotoQuestionId ? String(r.gotoQuestionId) : ''
+      }))
+      : []
   };
   if (isNew && !draft.options.length) {
     draft.options = [
@@ -376,6 +404,10 @@ export const openQuestionEditor = ({ survey, question, onSave }) => {
     }
     valHost = validationEditor(draft, refresh);
     mount(valWrap, inputGroup('校验规则', valHost));
+    if (!isSurveyMode) {
+      mount(jumpWrap);
+      return;
+    }
     jumpHost = jumpRulesEditor(draft, otherQuestions, question?._id, refresh);
     mount(jumpWrap, inputGroup('跳转规则', jumpHost, { hint: '条件之间为「或」关系，命中即跳转；未命中按顺序继续' }));
   };
@@ -431,7 +463,7 @@ export const openQuestionEditor = ({ survey, question, onSave }) => {
   };
 
   openModal({
-    title: isNew ? '添加题目' : '编辑题目',
+    title: isNew ? (isSurveyMode ? '添加题目' : '新建题目') : (isSurveyMode ? '编辑题目' : '编辑题目'),
     wide: true,
     body: (host) => {
       errHost = el('div', {});

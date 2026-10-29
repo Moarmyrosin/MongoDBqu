@@ -8,6 +8,8 @@ import { renderBuilder } from './views/builder.js';
 import { renderResults } from './views/results.js';
 import { renderFill } from './views/fill.js';
 import { renderSync } from './views/sync.js';
+import { renderLibrary } from './views/library.js';
+import { renderQuestionAnalytics } from './views/questionAnalytics.js';
 
 const nav = document.getElementById('nav');
 const view = document.getElementById('view');
@@ -23,6 +25,7 @@ const renderNav = () => {
       ),
       el('nav', { class: 'nav-links' },
         store.isLoggedIn ? el('a', { class: 'nav-link', href: '#/surveys' }, '我的问卷') : null,
+        store.isLoggedIn ? el('a', { class: 'nav-link', href: '#/questions' }, '题目库') : null,
         el('a', { class: 'nav-link', href: '#/sync' }, '接口同步')
       ),
       el('div', { class: 'nav-right' },
@@ -95,6 +98,16 @@ router
     if (!requireAuth(ctx)) return;
     renderNav();
     renderResults(ctx, view);
+  })
+  .on('/questions', (ctx) => {
+    if (!requireAuth(ctx)) return;
+    renderNav();
+    renderLibrary(ctx, view);
+  })
+  .on('/questions/:id/analytics', (ctx) => {
+    if (!requireAuth(ctx)) return;
+    renderNav();
+    renderQuestionAnalytics(ctx, view);
   })
   .on('/f/:id', (ctx) => {
     renderNav();

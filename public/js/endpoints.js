@@ -38,7 +38,30 @@ export const ENDPOINTS = {
   submitResponse: { method: 'POST', path: '/api/surveys/:id/responses', auth: 'required', desc: '提交答卷' },
   listResponses: { method: 'GET', path: '/api/surveys/:id/responses', auth: 'required', desc: '答卷列表（仅拥有者）' },
   surveyAnalytics: { method: 'GET', path: '/api/surveys/:id/analytics', auth: 'required', desc: '全卷统计（仅拥有者）' },
-  questionAnalytics: { method: 'GET', path: '/api/surveys/:id/questions/:qid/analytics', auth: 'required', desc: '单题统计（仅拥有者）' }
+  questionAnalytics: { method: 'GET', path: '/api/surveys/:id/questions/:qid/analytics', auth: 'required', desc: '单题统计（仅拥有者）' },
+
+  /* ---- 题目库（常用题目沉淀与复用） ---- */
+  createLibraryQuestion: { method: 'POST', path: '/api/questions', auth: 'required', desc: '保存题目到题目库（可入题库）' },
+  listMyLibraryQuestions: { method: 'GET', path: '/api/questions/mine', auth: 'required', desc: '我的题目' },
+  listSharedQuestions: { method: 'GET', path: '/api/questions/shared', auth: 'required', desc: '共享给我的题目' },
+  getLibraryQuestion: { method: 'GET', path: '/api/questions/:id', auth: 'required', desc: '题目详情' },
+  updateLibraryQuestion: { method: 'PATCH', path: '/api/questions/:id', auth: 'required', desc: '修改题目（可选生成新版本）' },
+  deleteLibraryQuestion: { method: 'DELETE', path: '/api/questions/:id', auth: 'required', desc: '删除题目' },
+  questionVersions: { method: 'GET', path: '/api/questions/:id/versions', auth: 'required', desc: '题目版本历史' },
+  restoreQuestionVersion: { method: 'POST', path: '/api/questions/:id/restore', auth: 'required', desc: '恢复旧版本为新版本' },
+  questionUsage: { method: 'GET', path: '/api/questions/:id/usage', auth: 'required', desc: '题目被哪些问卷使用' },
+  questionCrossAnalytics: { method: 'GET', path: '/api/questions/:id/analytics', auth: 'required', desc: '单题跨问卷统计' },
+  shareQuestion: { method: 'PATCH', path: '/api/questions/:id/share', auth: 'required', desc: '共享/取消共享题目' },
+  listSharedUsers: { method: 'GET', path: '/api/questions/:id/shared-users', auth: 'required', desc: '题目共享名单' },
+
+  /* ---- 题库 ---- */
+  createBank: { method: 'POST', path: '/api/banks', auth: 'required', desc: '创建题库' },
+  listBanks: { method: 'GET', path: '/api/banks/mine', auth: 'required', desc: '我的题库' },
+  getBankQuestions: { method: 'GET', path: '/api/banks/:id/questions', auth: 'required', desc: '题库内题目列表' },
+  updateBank: { method: 'PATCH', path: '/api/banks/:id', auth: 'required', desc: '修改题库' },
+  deleteBank: { method: 'DELETE', path: '/api/banks/:id', auth: 'required', desc: '删除题库' },
+  addBankQuestion: { method: 'POST', path: '/api/banks/:id/questions', auth: 'required', desc: '把题目加入题库' },
+  removeBankQuestion: { method: 'DELETE', path: '/api/banks/:id/questions/:qid', auth: 'required', desc: '把题目移出题库' }
 };
 
 export const HTTP_METHODS = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'];

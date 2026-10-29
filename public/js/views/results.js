@@ -1,47 +1,7 @@
 import { api } from '../api.js';
 import { el, mount, clear, toast, badge, fmtDateTime, spinner, emptyState } from '../ui.js';
 import { typeLabel } from '../validate.js';
-
-const renderBreakdown = (q) => {
-  const rows = q.breakdown || [];
-  const total = rows.reduce((s, r) => s + (r.count || 0), 0);
-  const max = Math.max(1, ...rows.map((r) => r.count || 0));
-  if (!rows.length) return el('p', { class: 'field-hint' }, '暂无数据');
-  return el('div', { class: 'bar-chart' },
-    rows.map((r) => {
-      const count = r.count || 0;
-      const pct = total ? Math.round((count / total) * 100) : 0;
-      return el('div', { class: 'bar-row' },
-        el('span', { class: 'bar-label', title: r.label }, r.label),
-        el('div', { class: 'bar-track' },
-          el('div', { class: 'bar-fill', style: { width: `${(count / max) * 100}%` } })
-        ),
-        el('span', { class: 'bar-count' }, count),
-        el('span', { class: 'bar-pct' }, `${pct}%`)
-      );
-    }),
-    el('p', { class: 'chart-total' }, `共 ${total} 人次选择`)
-  );
-};
-
-const renderNumber = (q) => {
-  if (!q.countNumeric) return el('p', { class: 'field-hint' }, '暂无数字作答');
-  return el('div', { class: 'stat-grid' },
-    [
-      ['作答人数', q.countNumeric],
-      ['平均值', q.average ?? '—'],
-      ['最小值', q.min ?? '—'],
-      ['最大值', q.max ?? '—'],
-      ['合计', q.sum ?? '—']
-    ].map(([k, v]) => el('div', { class: 'stat-cell' }, el('span', { class: 'stat-k' }, k), el('strong', {}, String(v))))
-  );
-};
-
-const renderText = (q) => {
-  const list = q.textAnswers || [];
-  if (!list.length) return el('p', { class: 'field-hint' }, '暂无文字作答');
-  return el('ul', { class: 'text-list' }, list.map((t, i) => el('li', {}, el('span', { class: 'text-idx' }, i + 1), el('span', {}, t))));
-};
+import { renderBreakdown, renderNumber, renderTextList as renderText } from './stats.js';
 
 const answerSummary = (a, questionMap) => {
   const q = questionMap.get(String(a.questionId));

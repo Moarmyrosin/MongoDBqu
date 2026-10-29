@@ -7,6 +7,7 @@ import {
 import { typeLabel, ruleSummary, hasOptions } from '../validate.js';
 import { describeRule } from '../jump.js';
 import { openQuestionEditor } from './questionEditor.js';
+import { openLibraryQuestionPickModal } from './library.js';
 
 const SETTINGS_FIELDS = [
   { key: 'loginRequiredToFill', label: '填写前必须登录', hint: '默认开启；关闭后允许匿名提交' },
@@ -87,12 +88,55 @@ export const renderBuilder = (ctx, root) => {
     });
   };
 
+  const pickFromLibrary = () => {
+    if (!guardDraft()) return;
+    openLibraryQuestionPickModal({
+      onInsert: async () => {
+        const res = await api.getSurvey(id);
+        survey = res.data;
+        render();
+      }
+    });
+  };
+
+  const saveToLibrary = async (q) => {
+    if (await confirmDialog(`把「${q.title}」保存为常用题目？\n保存后可在「题目库」中重复选用、共享和分版本维护。`, { confirmText: '保存到题目库' })) {
+      try {
+        await api.createLibraryQuestion({
+          content: {
+            title: q.title,
+            description: q.description || '',
+            type: q.type,
+            required: Boolean(q.required),
+            options: q.options || [],
+            validationRule: q.validationRule || {}
+          }
+        });
+        toast('已保存到题目库，跳转规则请入库后在问卷内重新配置', 'success');
+      } catch (err) {
+        toast(err instanceof ApiError ? err.message : '保存失败', 'error');
+      }
+    }
+  };
+
   const editQuestion = (q) => {
     if (!guardDraft()) return;
     openQuestionEditor({
       survey,
       question: q,
-      onSave: (draft) => run(() => api.updateQuestion(id, q._id, draft), '题目已更新')
+      onSave: async (draft) => {
+        let payload = draft;
+        let msg = '题目已更新';
+        if (q.sourceQuestionId) {
+          const createNewVersion = await confirmDialog(
+            `这道题来自题目库（v${q.sourceVersion ?? '?'}）。\n\n选择「生成新版本」：会把本次修改保存为题库新版本并关联本问卷；其他问卷仍用旧版本。\n\n（选择「取消」则只修改本问卷内的快照，不影响题库与其他问卷）`,
+            { confirmText: '生成新版本' }
+          );
+          payload = { ...draft, createNewVersion };
+          msg = createNewVersion ? '已生成题库新版本并关联' : '题目已更新（仅本问卷）';
+        }
+        await run(() => api.updateQuestion(id, q._id, payload), msg);
+      }
     });
   };
 
@@ -179,7 +223,10 @@ export const renderBuilder = (ctx, root) => {
           el('section', { class: 'card section-card' },
             el('div', { class: 'section-head' },
               el('h3', {}, '题目列表'),
-              isDraft() ? el('button', { class: 'btn btn-primary btn-sm', onclick: addQuestion }, '＋ 添加题目') : null
+              el('div', { class: 'section-head-actions' },
+                isDraft() ? el('button', { class: 'btn btn-ghost btn-sm', onclick: pickFromLibrary }, '从题目库选题') : null,
+                isDraft() ? el('button', { class: 'btn btn-primary btn-sm', onclick: addQuestion }, '＋ 添加题目') : null
+              )
             ),
             questions.length
               ? el('div', { class: 'question-list' },
@@ -190,6 +237,7 @@ export const renderBuilder = (ctx, root) => {
                       el('div', { class: 'q-title-row' },
                         el('span', { class: 'q-title' }, q.title || '未命名题目'),
                         el('span', { class: `type-chip type-${q.type}` }, typeLabel(q.type)),
+                        q.sourceQuestionId ? el('span', { class: 'version-chip' }, `题库 v${q.sourceVersion ?? '?'}`) : null,
                         q.required ? el('span', { class: 'req-chip' }, '必答') : null,
                         ruleSummary(q) ? el('span', { class: 'rule-chip' }, ruleSummary(q)) : null
                       ),
@@ -197,6 +245,7 @@ export const renderBuilder = (ctx, root) => {
                     ),
                     el('div', { class: 'q-actions' },
                       isDraft() ? el('button', { class: 'btn btn-ghost btn-sm', onclick: () => editQuestion(q) }, '编辑') : null,
+                      isDraft() ? el('button', { class: 'btn btn-ghost btn-sm', title: '把这道题沉淀为常用题目', onclick: () => saveToLibrary(q) }, '存到题目库') : null,
                       isDraft() ? el('button', {
                         class: 'icon-btn', title: '上移', disabled: i === 0, onclick: () => moveQuestion(i, -1)
                       }, '↑') : null,

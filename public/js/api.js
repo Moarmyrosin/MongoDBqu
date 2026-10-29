@@ -118,5 +118,29 @@ export const api = {
   submitResponse: (id, body) => request('submitResponse', { params: { id }, body }),
   listResponses: (id, query) => request('listResponses', { params: { id }, query }),
   surveyAnalytics: (id) => request('surveyAnalytics', { params: { id } }),
-  questionAnalytics: (id, qid) => request('questionAnalytics', { params: { id, qid } })
+  questionAnalytics: (id, qid) => request('questionAnalytics', { params: { id, qid } }),
+
+  createLibraryQuestion: (body) => request('createLibraryQuestion', { body }),
+  listMyLibraryQuestions: (query) => request('listMyLibraryQuestions', { query }),
+  listSharedQuestions: (query) => request('listSharedQuestions', { query }),
+  getLibraryQuestion: (id) => request('getLibraryQuestion', { params: { id } }),
+  updateLibraryQuestion: (id, body) => request('updateLibraryQuestion', { params: { id }, body }),
+  deleteLibraryQuestion: (id) => request('deleteLibraryQuestion', { params: { id } }),
+  questionVersions: (id) => request('questionVersions', { params: { id } }),
+  restoreQuestionVersion: (id, versionId) =>
+    request('restoreQuestionVersion', { params: { id }, body: { versionId } }),
+  questionUsage: (id, query) => request('questionUsage', { params: { id }, query }),
+  questionCrossAnalytics: (id, query) => request('questionCrossAnalytics', { params: { id }, query }),
+  shareQuestion: (id, body) => request('shareQuestion', { params: { id }, body }),
+  listSharedUsers: (id) => request('listSharedUsers', { params: { id } }),
+
+  createBank: (body) => request('createBank', { body }),
+  listBanks: () => request('listBanks'),
+  getBankQuestions: (id) => request('getBankQuestions', { params: { id } }),
+  updateBank: (id, body) => request('updateBank', { params: { id }, body }),
+  deleteBank: (id) => request('deleteBank', { params: { id } }),
+  addBankQuestion: (id, questionId) =>
+    request('addBankQuestion', { params: { id }, body: { questionId } }),
+  removeBankQuestion: (id, qid) =>
+    request('removeBankQuestion', { params: { id, qid } })
 };
